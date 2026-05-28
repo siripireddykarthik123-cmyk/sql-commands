@@ -566,4 +566,93 @@ song_name,
 play_count,
 rank() over(order by play_count desc)as song_rank
 from songs;
+#top songs  by gener
+select*from(
+select
+a.genre,
+s.song_name,
+s.play_count,
+row_number() over(
+partition by genre
+order by s.play_count desc
+)as rn
+from songs s
+join artists a
+on s.artist_id=a.artist_id
+)ranked
+where rn=1;
+
+#running total of streams
+select
+date(listened_at)as listen_date,
+count(*)as daily_streams,
+sum(count(*))over(
+order by date(listened_at))
+as running_total
+from listening_history
+group by listen_date;
+
+#users who like common songs
+select
+lh1.user_id as user1,
+lh2.user_id as user2,
+count(*)as common_songs
+from listening_history lh1
+join listening_history lh2
+on lh1.song_id=lh2.song_id
+and lh1.user_id < lh2.user_id
+group by user1,user2
+having common_songs>=5
+order by common_songs desc;
+
+#recommend trending songs
+select
+s.song_name,
+count(lh.history_id)as recent_streams
+from songs s
+join listening_history lh
+on s.song_id=lh.song_id
+where lh.listened_at>=now()-interval 7 day
+group by s.song_id
+order by recent_streams desc
+limit 10;
+
+#low user engagement
+select
+user_id,
+count(*)as total_streams
+from listening_history
+group by user_id
+having total_streams<5;
+
+#subscription drop
+select 
+month(end_date)as month,
+count(*)as expired_subscriptions
+from subscriptions
+group by month(end_date);
+
+#kpi metrics
+select
+count(distinct user_id)as total_users,
+count(distinct song_id)as total_songs_streamed,
+count(*)as total_streams,
+round(avg(minutes_played),2)as avg_listening_time
+from listening_history;
+
+#country wise users
+select
+country,
+count(*)as total_users
+from users
+group by country
+order by total_users desc;
+
+#device useage analysis
+select
+device_type,
+count(*)as total_streams
+from listening_history
+group by device_type
+order by total_streams desc;
 
